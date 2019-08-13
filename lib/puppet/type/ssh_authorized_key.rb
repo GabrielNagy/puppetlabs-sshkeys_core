@@ -83,7 +83,7 @@ module Puppet
       desc "The absolute filename in which to store the SSH key. This
         property is optional and should be used only in cases where keys
         are stored in a non-standard location, for instance when not in
-        `~user/.ssh/authorized_keys`."
+        `~user/.ssh/authorized_keys`. The parent directory must be present."
 
       defaultto :absent
 

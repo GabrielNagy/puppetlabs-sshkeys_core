@@ -37,6 +37,7 @@ RSpec.context 'ssh_authorized_key: Create' do
         fail_test "didn't find the ssh_authorized_key for #{name}" unless stdout.include? name.to_s
       end
     end
+
     it "#{agent} should create an entry for an SSH authorized key in a custom location" do
       custom_args = ['ensure=present',
                      'user=$LOGNAME',

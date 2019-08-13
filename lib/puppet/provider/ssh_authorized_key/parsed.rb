@@ -42,11 +42,6 @@ Puppet::Type.type(:ssh_authorized_key).provide(
     0o600
   end
 
-  def user
-    uid = Puppet::FileSystem.stat(target).uid
-    Etc.getpwuid(uid).name
-  end
-
   def flush
     raise Puppet::Error, 'Cannot write SSH authorized keys without user'    unless @resource.should(:user)
     raise Puppet::Error, "User '#{@resource.should(:user)}' does not exist" unless Puppet::Util.uid(@resource.should(:user))
@@ -56,16 +51,13 @@ Puppet::Type.type(:ssh_authorized_key).provide(
     # so calling it here suppresses the later attempt by our superclass's flush method.
     self.class.backup_target(target)
 
-    Puppet::Util::SUIDManager.asuser(@resource.should(:user)) do
-      unless Puppet::FileSystem.exist?(dir = File.dirname(target))
-        Puppet.debug "Creating #{dir} as #{@resource.should(:user)}"
-        Dir.mkdir(dir, dir_perm)
-      end
+    super
 
-      super
+    File.chmod(file_perm, target)
 
-      File.chmod(file_perm, target)
-    end
+    user = @resource.should(:user)
+    gid = Etc.getpwnam(user).gid
+    FileUtils.chown(user, gid, target)
   end
 
   # Parse sshv2 option strings, which is a comma-separated list of
