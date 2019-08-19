@@ -42,6 +42,10 @@ Puppet::Type.type(:ssh_authorized_key).provide(
     0o600
   end
 
+  def target_uid
+    Puppet::FileSystem.stat(File.dirname(target)).uid
+  end
+
   def flush
     raise Puppet::Error, 'Cannot write SSH authorized keys without user'    unless @resource.should(:user)
     raise Puppet::Error, "User '#{@resource.should(:user)}' does not exist" unless Puppet::Util.uid(@resource.should(:user))
@@ -51,7 +55,15 @@ Puppet::Type.type(:ssh_authorized_key).provide(
     # so calling it here suppresses the later attempt by our superclass's flush method.
     self.class.backup_target(target)
 
-    super
+    # if the target path is owned by the root, create the file as root
+    if target_uid == Process.euid
+      super
+    # otherwise create the file as the specified user
+    else
+      Puppet::Util::SUIDManager.asuser(@resource.should(:user)) do
+        super
+      end
+    end
 
     File.chmod(file_perm, target)
 
