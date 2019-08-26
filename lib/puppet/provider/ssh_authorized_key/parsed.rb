@@ -42,8 +42,16 @@ Puppet::Type.type(:ssh_authorized_key).provide(
     0o600
   end
 
-  def target_uid
-    Puppet::FileSystem.stat(File.dirname(target)).uid
+  def trusted_path
+    path = Puppet::FileSystem.pathname(target).dirname
+    until path.dirname.root?
+      if path.symlink? || path.stat.uid != Process.euid
+        Puppet.debug('Path not trusted. Will attempt to write as the target user.')
+        return false
+      end
+      path = path.dirname
+    end
+    Puppet.debug('Path trusted. Writing the file as root.')
   end
 
   def flush
@@ -55,8 +63,8 @@ Puppet::Type.type(:ssh_authorized_key).provide(
     # so calling it here suppresses the later attempt by our superclass's flush method.
     self.class.backup_target(target)
 
-    # if the target path is owned by the root, create the file as root
-    if target_uid == Process.euid
+    # if the target path is trusted, create the file as root
+    if trusted_path
       super
     # otherwise create the file as the specified user
     else

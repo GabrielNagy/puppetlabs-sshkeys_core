@@ -52,19 +52,17 @@ RSpec.context 'ssh_authorized_key: Create' do
 
     it "#{agent} should fail if target user doesn't have permissions for symlinked path" do
       # create a dummy user
-      on(agent, puppet_resource('user', 'testuser', 'ensure=present'))
+      on(agent, puppet_resource('user', 'testuser', 'ensure=present', 'managehome=true'))
 
-      # create an empty authorized_keys file as root
-      on(agent, "touch #{auth_keys}")
-      on(agent, "mkdir #{custom_key_directory} && chown testuser:testuser #{custom_key_directory}")
+      on(agent, "mkdir #{custom_key_directory}")
 
-      # as the user, symlink an owned file to something inside /root
-      on(agent, puppet_resource('file', custom_key, ["ensure=#{auth_keys}", 'owner=testuser']))
+      # as the user, symlink an owned directory to something inside /root
+      on(agent, puppet_resource('file', '/home/testuser/tmp', ['ensure=/etc', 'owner=testuser']))
       args = ['ensure=present',
               'user=testuser',
               "type='rsa'",
               "key='mykey'",
-              "target='#{custom_key}'"]
+              "target=/home/testuser/tmp/ssh_authorized_keys_#{name}/authorized_keys_#{name}"]
       on(agent, puppet_resource('ssh_authorized_key', name.to_s, args)) do |_res|
         fail_test unless stderr =~ %r{could not write}
       end
