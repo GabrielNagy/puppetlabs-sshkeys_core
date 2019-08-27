@@ -45,7 +45,15 @@ Puppet::Type.type(:ssh_authorized_key).provide(
   def trusted_path
     path = Puppet::FileSystem.pathname(target).dirname
     until path.dirname.root?
-      if path.symlink? || path.stat.uid != Process.euid
+      # if path.symlink?
+      #   begin
+      #     path = path.realpath
+      #   rescue Errno::ELOOP => e
+      #     raise Puppet:Error, 'Too many levels of symbolic links'
+      #   end
+      # end
+      path = path.realpath if path.symlink?
+      if path.stat.uid != Process.euid || path.world_writable?
         Puppet.debug('Path not trusted. Will attempt to write as the target user.')
         return false
       end
